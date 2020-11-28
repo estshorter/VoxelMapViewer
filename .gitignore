@@ -130,3 +130,4 @@ dist/bundle.js
 dist/map.bin
 dist/config.json
 src/*.js
+src/index.ts

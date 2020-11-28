@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { createParameter } from "typescript";
+const MeshLine = require("three.meshline").MeshLine;
+const MeshLineMaterial = require("three.meshline").MeshLineMaterial;
+const MeshLineRaycast = require("three.meshline").MeshLineRaycast;
 
 // import SimplexNoise from "simplex-noise";
 
@@ -209,13 +213,14 @@ async function main() {
     return;
   }
   const reader = response.body.getReader();
-  // ストリームからデータを読む
   const readResult = await reader.read();
   const heightMap = readResult.value;
   if (heightMap === undefined) {
     console.log("cannot load file");
     return;
   }
+
+  //read config.json
   response = await fetch("config.json");
   if (response.body == null) {
     console.log("cannot download config.json");
@@ -223,6 +228,13 @@ async function main() {
   }
   const configs = await response.json();
   const cellSize = configs.cellSize;
+
+  response = await fetch("path.json");
+  if (response.body == null) {
+    console.log("cannot download path.json");
+    return;
+  }
+  const path = await response.json();
 
   const fov = 75;
   const aspect = 2; // the canvas default
@@ -318,6 +330,10 @@ async function main() {
     renderer.render(scene, camera);
   }
   scene.add(...drawAxes(100));
+
+  scene.add(drawPath(path));
+  scene.add(drawSphere(path[0], 0xffff00));
+  scene.add(drawSphere(path[path.length - 1], "black"));
   render();
 
   function requestRenderIfNotRequested() {
@@ -329,6 +345,45 @@ async function main() {
 
   controls.addEventListener("change", requestRenderIfNotRequested);
   window.addEventListener("resize", requestRenderIfNotRequested);
+}
+
+function drawPath(path: number[][]) {
+  // const line_material = new THREE.LineBasicMaterial({ color: "red" });
+  // // ジオメトリを作成
+  // const line_geometry = new THREE.Geometry();
+  // ジオメトリに頂点座標を追加
+  // for (const pos of path) {
+  //   //線の通る位置とボックスの中心を合わせる
+  //   const posFixed = pos.map(function (p: number) {
+  //     return p + 0.5;
+  //   });
+  //   line_geometry.vertices.push(new THREE.Vector3(...posFixed));
+  // }
+  // const newline = new THREE.Line(line_geometry, line_material);
+  // scene.add(newline);
+  const line = new MeshLine();
+  const points = [];
+  for (const pos of path) {
+    const posFixed = pos.map(function (p: number) {
+      return p + 0.5;
+    });
+    points.push(...posFixed);
+  }
+  line.setPoints(points);
+  const lineMaterial = new MeshLineMaterial({ color: "red" });
+  const lineMesh = new THREE.Mesh(line, lineMaterial);
+  return lineMesh;
+}
+
+function drawSphere(c: number[], color: string | number | THREE.Color) {
+  const sphere_geometry1 = new THREE.SphereGeometry(0.5, 32, 32);
+  const sphere_material1 = new THREE.MeshPhongMaterial({ color: color });
+  const sphere = new THREE.Mesh(sphere_geometry1, sphere_material1);
+  const p = c.map(function (p: number) {
+    return p + 0.5;
+  });
+  sphere.position.set(p[0], p[1], p[2]);
+  return sphere;
 }
 
 function drawAxes(length: number) {
