@@ -202,7 +202,7 @@ class TerrianBarWorld {
 
 async function fetchMap(url: string) {
   const response = await fetch(url);
-  if (response.body == null) {
+  if (response.body == null || response.status != 200) {
     console.log("cannot download map.bin");
     return undefined;
   }
@@ -212,11 +212,9 @@ async function fetchMap(url: string) {
   return heightMap;
 }
 
-async function fetchConfig(
-  url: string
-): Promise<undefined | { cellSize: number }> {
+async function fetchConfig(url: string) {
   const response = await fetch(url);
-  if (response.body == null) {
+  if (response.body == null || response.status != 200) {
     console.log("cannot download config.json");
     return undefined;
   }
@@ -225,9 +223,9 @@ async function fetchConfig(
 
 async function fetchPath(url: string) {
   const response = await fetch(url);
-  if (response.body == null) {
+  if (response.body == null || response.status != 200) {
     console.log("cannot download path.json");
-    return;
+    return undefined;
   }
   return await response.json();
 }
@@ -250,9 +248,23 @@ async function main() {
     console.log("error while downloading map.bin");
     return;
   }
+  if (configs.cellSize == null) {
+    console.log("invalid config.json");
+    return;
+  }
   const cellSize = configs.cellSize;
+  if (cellSize * cellSize !== heightMap.length) {
+    console.log("cellSize or heightMap.length is invalid");
+    return;
+  }
 
   const path = await fetchPath("path.json");
+  let enable_path_rendering = true;
+  if (path == undefined || path == null) {
+    console.log("error while downloading path.json");
+    enable_path_rendering = false;
+    // return;
+  }
 
   const fov = 75;
   const aspect = 2; // the canvas default
@@ -349,9 +361,11 @@ async function main() {
   }
   scene.add(...drawAxes(100));
 
-  scene.add(drawPath(path));
-  scene.add(drawSphere(path[0], 0xffff00));
-  scene.add(drawSphere(path[path.length - 1], "black"));
+  if (enable_path_rendering) {
+    scene.add(drawPath(path));
+    scene.add(drawSphere(path[0], 0xffff00));
+    scene.add(drawSphere(path[path.length - 1], "black"));
+  }
   render();
 
   function requestRenderIfNotRequested() {
