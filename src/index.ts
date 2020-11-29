@@ -1,9 +1,10 @@
+/* eslint @typescript-eslint/no-var-requires: "off" */
+
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { createParameter } from "typescript";
 const MeshLine = require("three.meshline").MeshLine;
 const MeshLineMaterial = require("three.meshline").MeshLineMaterial;
-const MeshLineRaycast = require("three.meshline").MeshLineRaycast;
+// const MeshLineRaycast = require("three.meshline").MeshLineRaycast;
 
 // import SimplexNoise from "simplex-noise";
 
@@ -199,6 +200,38 @@ class TerrianBarWorld {
   }
 }
 
+async function fetchMap(url: string) {
+  const response = await fetch(url);
+  if (response.body == null) {
+    console.log("cannot download map.bin");
+    return undefined;
+  }
+  const reader = response.body.getReader();
+  const readResult = await reader.read();
+  const heightMap = readResult.value;
+  return heightMap;
+}
+
+async function fetchConfig(
+  url: string
+): Promise<undefined | { cellSize: number }> {
+  const response = await fetch(url);
+  if (response.body == null) {
+    console.log("cannot download config.json");
+    return undefined;
+  }
+  return await response.json();
+}
+
+async function fetchPath(url: string) {
+  const response = await fetch(url);
+  if (response.body == null) {
+    console.log("cannot download path.json");
+    return;
+  }
+  return await response.json();
+}
+
 async function main() {
   const canvas = document.getElementById(
     "canvas-container"
@@ -207,34 +240,19 @@ async function main() {
     canvas: canvas,
   });
 
-  let response = await fetch("map.bin");
-  if (response.body == null) {
-    console.log("cannot download map.bin");
+  const heightMap = await fetchMap("map.bin");
+  if (heightMap == undefined) {
+    console.log("error while downloading map.bin");
     return;
   }
-  const reader = response.body.getReader();
-  const readResult = await reader.read();
-  const heightMap = readResult.value;
-  if (heightMap === undefined) {
-    console.log("cannot load file");
+  const configs = await fetchConfig("config.json");
+  if (configs == undefined) {
+    console.log("error while downloading map.bin");
     return;
   }
-
-  //read config.json
-  response = await fetch("config.json");
-  if (response.body == null) {
-    console.log("cannot download config.json");
-    return;
-  }
-  const configs = await response.json();
   const cellSize = configs.cellSize;
 
-  response = await fetch("path.json");
-  if (response.body == null) {
-    console.log("cannot download path.json");
-    return;
-  }
-  const path = await response.json();
+  const path = await fetchPath("path.json");
 
   const fov = 75;
   const aspect = 2; // the canvas default
