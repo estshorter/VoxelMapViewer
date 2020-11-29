@@ -130,10 +130,10 @@ class TerrianBarWorld {
   ) {
     const ndx = positions.length / 3;
     for (const pos of corners) {
-      const z = pos[2] > 0 ? height : 0;
+      const z = pos[2] > 0 ? height + 1 : 0; //標高が0でも1ブロック置きたいので+1する
       positions.push(pos[0] + x, pos[1] + y, z);
       normals.push(...dir);
-      colors.push(...this.getColor(z / this.maxHeight));
+      colors.push(...this.getColor(z / (this.maxHeight + 1)));
     }
     indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
   }
@@ -212,19 +212,10 @@ async function fetchMap(url: string) {
   return heightMap;
 }
 
-async function fetchConfig(url: string) {
+async function fetchJson(url: string) {
   const response = await fetch(url);
   if (response.body == null || response.status != 200) {
-    console.log("cannot download config.json");
-    return undefined;
-  }
-  return await response.json();
-}
-
-async function fetchPath(url: string) {
-  const response = await fetch(url);
-  if (response.body == null || response.status != 200) {
-    console.log("cannot download path.json");
+    console.log("cannot download a json file");
     return undefined;
   }
   return await response.json();
@@ -243,7 +234,7 @@ async function main() {
     console.log("error while downloading map.bin");
     return;
   }
-  const configs = await fetchConfig("config.json");
+  const configs = await fetchJson("config.json");
   if (configs == undefined) {
     console.log("error while downloading map.bin");
     return;
@@ -258,12 +249,18 @@ async function main() {
     return;
   }
 
-  const path = await fetchPath("path.json");
+  const path = await fetchJson("path.json");
   let enable_path_rendering = true;
   if (path == undefined || path == null) {
     console.log("error while downloading path.json");
     enable_path_rendering = false;
     // return;
+  }
+
+  const neighbors = await fetchJson("neighbors.json");
+  if (neighbors == undefined || neighbors == null) {
+    console.log("error while downloading path.json");
+    return;
   }
 
   const fov = 75;
@@ -366,6 +363,13 @@ async function main() {
     scene.add(drawSphere(path[0], 0xffff00));
     scene.add(drawSphere(path[path.length - 1], "black"));
   }
+  // for (const pos of neighbors) {
+  //   if (!arrayEqual(pos, path[0])) {
+  //     scene.add(drawBox(pos, "pink", true, 0.5));
+  //   }
+  // }
+  // scene.add(drawPath(path));
+
   render();
 
   function requestRenderIfNotRequested() {
@@ -377,6 +381,14 @@ async function main() {
 
   controls.addEventListener("change", requestRenderIfNotRequested);
   window.addEventListener("resize", requestRenderIfNotRequested);
+}
+
+function arrayEqual<T>(a: T[], b: T[]) {
+  if (a.length != b.length) return false;
+  for (let i = 0, n = a.length; i < n; ++i) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function drawPath(path: number[][]) {
@@ -408,14 +420,34 @@ function drawPath(path: number[][]) {
 }
 
 function drawSphere(c: number[], color: string | number | THREE.Color) {
-  const sphere_geometry1 = new THREE.SphereGeometry(0.5, 32, 32);
-  const sphere_material1 = new THREE.MeshPhongMaterial({ color: color });
-  const sphere = new THREE.Mesh(sphere_geometry1, sphere_material1);
+  const sphere_geometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const sphere_material = new THREE.MeshPhongMaterial({ color: color });
+  const sphere = new THREE.Mesh(sphere_geometry, sphere_material);
   const p = c.map(function (p: number) {
     return p + 0.5;
   });
   sphere.position.set(p[0], p[1], p[2]);
   return sphere;
+}
+
+function drawBox(
+  c: number[],
+  color: string | number | THREE.Color,
+  transparent = false,
+  opacity = 1.0
+) {
+  const box_geometry = new THREE.BoxGeometry();
+  const box_material = new THREE.MeshPhongMaterial({
+    color: color,
+    transparent: transparent,
+    opacity: opacity,
+  });
+  const box = new THREE.Mesh(box_geometry, box_material);
+  const p = c.map(function (p: number) {
+    return p + 0.5;
+  });
+  box.position.set(p[0], p[1], p[2]);
+  return box;
 }
 
 function drawAxes(length: number) {
