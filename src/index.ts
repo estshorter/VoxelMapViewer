@@ -257,11 +257,11 @@ async function main() {
     // return;
   }
 
-  const neighbors = await fetchJson("neighbors.json");
-  if (neighbors == undefined || neighbors == null) {
-    console.log("error while downloading path.json");
-    return;
-  }
+  // const neighbors = await fetchJson("neighbors.json");
+  // if (neighbors == undefined || neighbors == null) {
+  //   console.log("error while downloading neighbors.json");
+  //   return;
+  // }
 
   const fov = 75;
   const aspect = 2; // the canvas default
