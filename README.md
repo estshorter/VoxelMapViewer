@@ -1,5 +1,7 @@
 # VoxelMapViewer
-MineCraft-like map viewer based on Ref. [1].
+MineCraft-like map viewer.
+This software is based on Ref. [1], but differs in that components are square cuboids, not cubes to reduce computational intensity. 
+
 
 ![alt text](https://raw.githubusercontent.com/estshorter/VoxelMapViewer/images/screnshot.png)
 
